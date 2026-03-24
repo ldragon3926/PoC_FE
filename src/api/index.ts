@@ -43,6 +43,16 @@ export const rewardApi     = createCrudApi<Reward,      RewardCreateRequest,    
 const salaryCrudApi        = createCrudApi<Salary,      SalaryCreateRequest,     SalaryUpdateRequest>('salary')
 export const salaryApi     = {
   ...salaryCrudApi,
+  listAll: (params?: {
+    keyword?: string
+    employeeId?: number
+    month?: number
+    year?: number
+    status?: Salary['status']
+  }) =>
+    apiClient
+      .get<ApiResponse<Salary[]>>('/salary/list-all', { params })
+      .then((r) => r.data),
   generateMonth: (month: number, year: number, overwriteDraft = false) =>
     apiClient
       .post<ApiResponse<number>>(`/salary/create/generate`, undefined, { params: { month, year, overwriteDraft } })

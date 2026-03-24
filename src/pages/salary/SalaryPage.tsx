@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Alert, App, Button, Empty, Form, InputNumber, Modal, Select, Space, Table, Tag } from 'antd'
+import { Alert, App, Button, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { contractApi, employeeApi, rewardApi, salaryApi } from '@/api'
@@ -74,13 +74,28 @@ const salaryStatusColor = (status?: Salary['status']) => {
   return 'default'
 }
 
+type SalaryListFilters = {
+  keyword?: string
+  employeeId?: number
+  month?: number
+  year?: number
+  status?: Salary['status']
+}
+
 const SalaryPage: React.FC = () => {
   const { modal, message } = App.useApp()
   const { hasPermission } = useAuth()
-  const { data, loading, error, fetch } = useList(() => salaryApi.listAll())
+  const [appliedFilters, setAppliedFilters] = useState<SalaryListFilters>({})
+  const salaryFetcher = React.useCallback(() => salaryApi.listAll(appliedFilters), [appliedFilters])
+  const { data, loading, error, fetch } = useList(salaryFetcher)
   const employeeList = useList(() => employeeApi.listAll())
   const contractList = useList(() => contractApi.listAll())
   const rewardList = useList(() => rewardApi.listAll())
+  const [keyword, setKeyword] = useState('')
+  const [filterEmployeeId, setFilterEmployeeId] = useState<number | undefined>(undefined)
+  const [filterMonth, setFilterMonth] = useState<number | undefined>(undefined)
+  const [filterYear, setFilterYear] = useState<number | undefined>(undefined)
+  const [filterStatus, setFilterStatus] = useState<Salary['status'] | undefined>(undefined)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Salary | null>(null)
   const [finalizeMonth, setFinalizeMonth] = useState(dayjs().month() + 1)
@@ -89,6 +104,9 @@ const SalaryPage: React.FC = () => {
 
   useEffect(() => {
     fetch()
+  }, [fetch])
+
+  useEffect(() => {
     employeeList.fetch()
     contractList.fetch()
     rewardList.fetch()
@@ -303,6 +321,25 @@ const SalaryPage: React.FC = () => {
     })
   }
 
+  const applyFilters = () => {
+    setAppliedFilters({
+      keyword: keyword.trim() || undefined,
+      employeeId: filterEmployeeId,
+      month: filterMonth,
+      year: filterYear,
+      status: filterStatus,
+    })
+  }
+
+  const resetFilters = () => {
+    setKeyword('')
+    setFilterEmployeeId(undefined)
+    setFilterMonth(undefined)
+    setFilterYear(undefined)
+    setFilterStatus(undefined)
+    setAppliedFilters({})
+  }
+
   const numFmt = {
     formatter: (value: number | undefined) => `${value ?? ''}`.replace(/\B(?=(\d{3})+(?!\d))/g, ','),
   }
@@ -410,6 +447,61 @@ const SalaryPage: React.FC = () => {
         }
       />
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      <Space wrap style={{ marginBottom: 16 }}>
+        <Input
+          placeholder="Search employee name/email"
+          value={keyword}
+          onChange={event => setKeyword(event.target.value)}
+          allowClear
+          style={{ width: 240 }}
+          onPressEnter={applyFilters}
+        />
+        <Select
+          placeholder="Employee"
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          value={filterEmployeeId}
+          onChange={value => setFilterEmployeeId(value)}
+          style={{ width: 220 }}
+          options={employeeList.data.map(employee => ({
+            value: employee.id,
+            label: employee.name,
+          }))}
+        />
+        <Select
+          placeholder="Month"
+          allowClear
+          value={filterMonth}
+          onChange={value => setFilterMonth(value)}
+          style={{ width: 120 }}
+          options={MONTHS.map(month => ({ value: month, label: `Month ${month}` }))}
+        />
+        <InputNumber
+          placeholder="Year"
+          value={filterYear}
+          onChange={value => setFilterYear(value ?? undefined)}
+          min={2000}
+          max={3000}
+          style={{ width: 120 }}
+        />
+        <Select
+          placeholder="Status"
+          allowClear
+          value={filterStatus}
+          onChange={value => setFilterStatus(value)}
+          style={{ width: 140 }}
+          options={[
+            { value: 'DRAFT', label: 'DRAFT' },
+            { value: 'FINALIZED', label: 'FINALIZED' },
+            { value: 'PAID', label: 'PAID' },
+          ]}
+        />
+        <Button type="primary" onClick={applyFilters}>
+          Search
+        </Button>
+        <Button onClick={resetFilters}>Reset</Button>
+      </Space>
       <Table
         rowKey="id"
         columns={columns}

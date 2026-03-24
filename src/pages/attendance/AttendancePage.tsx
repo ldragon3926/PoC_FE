@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import {
+  App,
   Alert,
   Button,
   DatePicker,
   Empty,
   Form,
+  Input,
   InputNumber,
   Modal,
   Select,
@@ -14,7 +16,7 @@ import {
 } from 'antd'
 import { EditOutlined, PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { attendanceApi, employeeApi } from '@/api'
+import { attendanceApi, employeeApi, userApi } from '@/api'
 import ConfirmDelete from '@/components/common/ConfirmDelete'
 import PageHeader from '@/components/common/PageHeader'
 import { useAuth } from '@/contexts/AuthContext'
@@ -33,17 +35,42 @@ const calculateWorkingHours = (checkIn?: dayjs.Dayjs, checkOut?: dayjs.Dayjs) =>
 }
 
 const AttendancePage: React.FC = () => {
-  const { hasPermission } = useAuth()
+  const { message } = App.useApp()
+  const { user, hasPermission } = useAuth()
   const { data, loading, error, fetch } = useList(() => attendanceApi.listAll())
   const employeeList = useList(() => employeeApi.listAll())
+  const [selfEmployee, setSelfEmployee] = useState<{ id: number; name: string } | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Attendance | null>(null)
   const [form] = Form.useForm()
+  const canListEmployees = hasPermission(PERMISSIONS.EMPLOYEE_LIST)
 
   useEffect(() => {
     fetch()
-    employeeList.fetch()
-  }, [])
+    if (hasPermission(PERMISSIONS.EMPLOYEE_LIST)) {
+      employeeList.fetch()
+      return
+    }
+    if (!user?.userId) {
+      setSelfEmployee(null)
+      return
+    }
+
+    userApi
+      .detail(user.userId)
+      .then((response) => {
+        const detail = response.data as { employeeId?: number; employeeName?: string; username?: string }
+        if (detail.employeeId) {
+          setSelfEmployee({
+            id: detail.employeeId,
+            name: detail.employeeName || detail.username || `Employee ${detail.employeeId}`,
+          })
+        }
+      })
+      .catch(() => {
+        setSelfEmployee(null)
+      })
+  }, [user?.userId, hasPermission(PERMISSIONS.EMPLOYEE_LIST)])
 
   const empMap = React.useMemo(() => {
     const map: Record<number, string> = {}
@@ -80,8 +107,16 @@ const AttendancePage: React.FC = () => {
   const openCreate = () => {
     setEditing(null)
     form.resetFields()
+    if (selfEmployee) {
+      form.setFieldValue('employeeId', selfEmployee.id)
+    }
     setModalOpen(true)
   }
+
+  useEffect(() => {
+    if (!modalOpen || editing || canListEmployees || !selfEmployee) return
+    form.setFieldValue('employeeId', selfEmployee.id)
+  }, [modalOpen, editing, canListEmployees, selfEmployee, form])
 
   const openEdit = (record: Attendance) => {
     const checkIn = record.checkIn ? dayjs(record.checkIn, 'HH:mm') : undefined
@@ -105,8 +140,14 @@ const AttendancePage: React.FC = () => {
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
+    const resolvedEmployeeId = values.employeeId ?? selfEmployee?.id
+    if (!resolvedEmployeeId) {
+      message.error('Can not detect employee profile for this account')
+      return
+    }
     const req: AttendanceCreateRequest = {
       ...values,
+      employeeId: resolvedEmployeeId,
       workDate: values.workDate?.format('YYYY-MM-DD'),
       checkIn: values.checkIn?.format('HH:mm'),
       checkOut: values.checkOut?.format('HH:mm'),
@@ -189,22 +230,33 @@ const AttendancePage: React.FC = () => {
         destroyOnClose
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }} onValuesChange={handleValuesChange}>
-          <Form.Item
-            name="employeeId"
-            label="Employee"
-            rules={[{ required: true, message: 'Please select an employee' }]}
-          >
-            <Select
-              placeholder="Select employee"
-              showSearch
-              loading={employeeList.loading}
-              optionFilterProp="label"
-              options={employeeList.data.map(employee => ({
-                value: employee.id,
-                label: employee.name,
-              }))}
-            />
-          </Form.Item>
+          {canListEmployees ? (
+            <Form.Item
+              name="employeeId"
+              label="Employee"
+              rules={[{ required: true, message: 'Please select an employee' }]}
+            >
+              <Select
+                placeholder="Select employee"
+                showSearch
+                loading={employeeList.loading}
+                optionFilterProp="label"
+                options={employeeList.data.map(employee => ({
+                  value: employee.id,
+                  label: employee.name,
+                }))}
+              />
+            </Form.Item>
+          ) : (
+            <>
+              <Form.Item name="employeeId" hidden rules={[{ required: true }]}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="Employee">
+                <Input value={selfEmployee?.name ?? user?.username ?? '-'} readOnly />
+              </Form.Item>
+            </>
+          )}
           <Form.Item
             name="workDate"
             label="Work date"

@@ -1,19 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Alert, Button, Empty, Form, InputNumber, Modal, Select, Space, Table } from 'antd'
-import { EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { Alert, App, Button, Empty, Form, InputNumber, Modal, Select, Space, Table, Tag } from 'antd'
+import { DeleteOutlined, EditOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { contractApi, employeeApi, rewardApi, salaryApi } from '@/api'
 import ConfirmDelete from '@/components/common/ConfirmDelete'
 import PageHeader from '@/components/common/PageHeader'
 import { useAuth } from '@/contexts/AuthContext'
 import { useList, useMutation } from '@/hooks/useApi'
-import type { Contract, Employee, Reward, Salary, SalaryCreateRequest } from '@/types'
+import type { ApiResponse, Contract, Employee, Reward, Salary, SalaryCreateRequest } from '@/types'
 import { formatCurrency, formatDate, getEmployeeDisplayName } from '@/utils/format'
 import { PERMISSIONS } from '@/utils/permissions'
 
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1)
-const currentYear = new Date().getFullYear()
-const YEARS = Array.from({ length: 5 }, (_, index) => currentYear - 2 + index)
 
 const toNumber = (value: unknown) => {
   if (typeof value === 'number') return value
@@ -65,7 +63,19 @@ const getPreferredContract = (contracts: Contract[], employeeId?: number) => {
   })[0]
 }
 
+const normalizeSalaryStatus = (status?: Salary['status']) => (status ?? 'DRAFT').toUpperCase()
+
+const isDraftSalary = (status?: Salary['status']) => normalizeSalaryStatus(status) === 'DRAFT'
+
+const salaryStatusColor = (status?: Salary['status']) => {
+  const normalized = normalizeSalaryStatus(status)
+  if (normalized === 'PAID') return 'success'
+  if (normalized === 'FINALIZED') return 'processing'
+  return 'default'
+}
+
 const SalaryPage: React.FC = () => {
+  const { modal, message } = App.useApp()
   const { hasPermission } = useAuth()
   const { data, loading, error, fetch } = useList(() => salaryApi.listAll())
   const employeeList = useList(() => employeeApi.listAll())
@@ -73,6 +83,8 @@ const SalaryPage: React.FC = () => {
   const rewardList = useList(() => rewardApi.listAll())
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Salary | null>(null)
+  const [finalizeMonth, setFinalizeMonth] = useState(dayjs().month() + 1)
+  const [finalizeYear, setFinalizeYear] = useState(dayjs().year())
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -125,6 +137,27 @@ const SalaryPage: React.FC = () => {
     successMessage: 'Delete salary successfully',
     onSuccess: () => fetch(),
   })
+
+  const finalizeMut = useMutation(
+    (args: { month: number; year: number }) => salaryApi.finalizeMonth(args.month, args.year),
+    {
+      onSuccess: (result: ApiResponse<number>) => {
+        message.success(result.message || 'Finalize salary period successfully')
+        fetch()
+      },
+    }
+  )
+
+  const generateMut = useMutation(
+    (args: { month: number; year: number; overwriteDraft: boolean }) =>
+      salaryApi.generateMonth(args.month, args.year, args.overwriteDraft),
+    {
+      onSuccess: (result: ApiResponse<number>) => {
+        message.success(result.message || 'Generate salary period successfully')
+        fetch()
+      },
+    }
+  )
 
   const openCreate = () => {
     setEditing(null)
@@ -205,7 +238,7 @@ const SalaryPage: React.FC = () => {
 
   const handleSubmit = async () => {
     const values = await form.validateFields()
-    const { rewardAmount, ...restValues } = values
+    const { rewardAmount, status, ...restValues } = values
     const req: SalaryCreateRequest = {
       ...restValues,
       totalSalary: computeTotalSalaryWithReward(
@@ -226,6 +259,49 @@ const SalaryPage: React.FC = () => {
   const canCreate = hasPermission(PERMISSIONS.SALARY_CREATE)
   const canUpdate = hasPermission(PERMISSIONS.SALARY_UPDATE)
   const canDelete = hasPermission(PERMISSIONS.SALARY_DELETE)
+  const canFinalize = canUpdate
+
+  const triggerGenerate = () => {
+    if (finalizeMonth < 1 || finalizeMonth > 12) {
+      message.error('Month must be between 1 and 12')
+      return
+    }
+    if (finalizeYear < 2000 || finalizeYear > 3000) {
+      message.error('Year must be between 2000 and 3000')
+      return
+    }
+
+    modal.confirm({
+      title: `Generate salary period ${finalizeMonth}/${finalizeYear}?`,
+      content: 'This will auto-calculate salary by attendance days and reward in the selected period. Existing DRAFT records are kept.',
+      okText: 'Generate',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        await generateMut.execute({ month: finalizeMonth, year: finalizeYear, overwriteDraft: false })
+      },
+    })
+  }
+
+  const triggerFinalize = () => {
+    if (finalizeMonth < 1 || finalizeMonth > 12) {
+      message.error('Month must be between 1 and 12')
+      return
+    }
+    if (finalizeYear < 2000 || finalizeYear > 3000) {
+      message.error('Year must be between 2000 and 3000')
+      return
+    }
+
+    modal.confirm({
+      title: `Finalize salary period ${finalizeMonth}/${finalizeYear}?`,
+      content: 'After finalize, salary records in this period cannot be edited or deleted.',
+      okText: 'Finalize',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        await finalizeMut.execute({ month: finalizeMonth, year: finalizeYear })
+      },
+    })
+  }
 
   const numFmt = {
     formatter: (value: number | undefined) => `${value ?? ''}`.replace(/\B(?=(\d{3})+(?!\d))/g, ','),
@@ -249,21 +325,43 @@ const SalaryPage: React.FC = () => {
       width: 150,
       render: (value?: number | null) => <strong>{formatCurrency(value)}</strong>,
     },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      width: 120,
+      render: (value?: Salary['status']) => <Tag color={salaryStatusColor(value)}>{normalizeSalaryStatus(value)}</Tag>,
+    },
     { title: 'Created at', dataIndex: 'createdAt', width: 110, render: (value?: string | null) => formatDate(value) },
     {
       title: 'Actions',
       width: 160,
       fixed: 'right' as const,
-      render: (_: unknown, record: Salary) => (
-        <Space>
-          {canUpdate && (
-            <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(record)}>
-              Edit
-            </Button>
-          )}
-          {canDelete && <ConfirmDelete onConfirm={() => deleteMut.execute(record.id)} />}
-        </Space>
-      ),
+      render: (_: unknown, record: Salary) => {
+        const canEditThisRecord = isDraftSalary(record.status)
+
+        return (
+          <Space>
+            {canUpdate && (
+              <Button
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => openEdit(record)}
+                disabled={!canEditThisRecord}
+              >
+                Edit
+              </Button>
+            )}
+            {canDelete &&
+              (canEditThisRecord ? (
+                <ConfirmDelete onConfirm={() => deleteMut.execute(record.id)} />
+              ) : (
+                <Button danger size="small" icon={<DeleteOutlined />} disabled>
+                  Delete
+                </Button>
+              ))}
+          </Space>
+        )
+      },
     },
   ]
 
@@ -273,13 +371,42 @@ const SalaryPage: React.FC = () => {
         title="Salary"
         subtitle={`${data.length} records`}
         extra={
-          canCreate
-            ? [
+          (() => {
+            const actions: React.ReactNode[] = []
+            if (canFinalize) {
+              actions.push(
+                <Space key="finalize">
+                  <Select
+                    value={finalizeMonth}
+                    onChange={setFinalizeMonth}
+                    style={{ width: 110 }}
+                    options={MONTHS.map(month => ({ value: month, label: `Month ${month}` }))}
+                  />
+                  <InputNumber
+                    value={finalizeYear}
+                    onChange={value => setFinalizeYear(value ?? dayjs().year())}
+                    min={2000}
+                    max={3000}
+                    style={{ width: 120 }}
+                  />
+                  <Button icon={<ThunderboltOutlined />} onClick={triggerGenerate} loading={generateMut.loading}>
+                    Generate
+                  </Button>
+                  <Button onClick={triggerFinalize} loading={finalizeMut.loading}>
+                    Finalize period
+                  </Button>
+                </Space>
+              )
+            }
+            if (canCreate) {
+              actions.push(
                 <Button key="create" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                   Add salary
-                </Button>,
-              ]
-            : undefined
+                </Button>
+              )
+            }
+            return actions.length > 0 ? actions : undefined
+          })()
         }
       />
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
@@ -290,7 +417,7 @@ const SalaryPage: React.FC = () => {
         loading={loading}
         locale={{ emptyText: <Empty description="No salary data" /> }}
         pagination={{ pageSize: 10, showSizeChanger: true, showTotal: total => `Total ${total} records` }}
-        scroll={{ x: 1100 }}
+        scroll={{ x: 1220 }}
       />
       <Modal
         open={modalOpen}
@@ -321,11 +448,27 @@ const SalaryPage: React.FC = () => {
             />
           </Form.Item>
           <Space style={{ width: '100%' }}>
-            <Form.Item name="month" label="Month" rules={[{ required: true }]} style={{ flex: 1 }}>
+            <Form.Item
+              name="month"
+              label="Month"
+              rules={[
+                { required: true, message: 'Please select month' },
+                { type: 'number', min: 1, max: 12, message: 'Month must be between 1 and 12' },
+              ]}
+              style={{ flex: 1 }}
+            >
               <Select options={MONTHS.map(month => ({ value: month, label: `Month ${month}` }))} />
             </Form.Item>
-            <Form.Item name="year" label="Year" rules={[{ required: true }]} style={{ flex: 1 }}>
-              <Select options={YEARS.map(year => ({ value: year, label: `${year}` }))} />
+            <Form.Item
+              name="year"
+              label="Year"
+              rules={[
+                { required: true, message: 'Please input year' },
+                { type: 'number', min: 2000, max: 3000, message: 'Year must be between 2000 and 3000' },
+              ]}
+              style={{ flex: 1 }}
+            >
+              <InputNumber style={{ width: '100%' }} min={2000} max={3000} />
             </Form.Item>
           </Space>
           <Form.Item

@@ -20,6 +20,17 @@ export interface AuthData {
   authorities: string[]
 }
 
+export interface MyProfile {
+  userId: number
+  username: string
+  email?: string
+  employeeId?: number
+  employeeName?: string
+  departmentId?: number
+  roleNames: string[]
+  authorities: string[]
+}
+
 // ─── Department ──────────────────────────────────────────────────────────────
 
 export interface Department {
@@ -155,6 +166,7 @@ export interface Salary {
   allowance: number
   deduction: number
   totalSalary: number
+  status?: 'DRAFT' | 'FINALIZED' | 'PAID'
   createdAt?: string
 }
 

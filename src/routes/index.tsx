@@ -7,6 +7,7 @@ import { PERMISSIONS } from '@/utils/permissions'
 
 const LoginPage        = lazy(() => import('@/pages/auth/LoginPage'))
 const DashboardPage    = lazy(() => import('@/pages/dashboard/DashboardPage'))
+const ProfilePage      = lazy(() => import('@/pages/profile/ProfilePage'))
 const DepartmentPage   = lazy(() => import('@/pages/department/DepartmentPage'))
 const EmployeePage     = lazy(() => import('@/pages/employee/EmployeePage'))
 const UserPage         = lazy(() => import('@/pages/user/UserPage'))
@@ -38,6 +39,7 @@ const AppRouter: React.FC = () => (
           <Route path="/" element={<AdminLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="profile" element={<ProfilePage />} />
             <Route path="departments" element={<PermissionGuard permission={PERMISSIONS.DEPARTMENT_LIST}><DepartmentPage /></PermissionGuard>} />
             <Route path="employees"   element={<PermissionGuard permission={PERMISSIONS.EMPLOYEE_LIST}><EmployeePage /></PermissionGuard>} />
             <Route path="users"       element={<PermissionGuard permission={PERMISSIONS.USER_LIST}><UserPage /></PermissionGuard>} />

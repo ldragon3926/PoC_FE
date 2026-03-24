@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 // Lazy-loaded pages
 const LoginPage         = lazy(() => import('@/pages/auth/LoginPage'))
 const DashboardPage     = lazy(() => import('@/pages/dashboard/DashboardPage'))
+const ProfilePage       = lazy(() => import('@/pages/profile/ProfilePage'))
 const DepartmentPage    = lazy(() => import('@/pages/department/DepartmentPage'))
 const EmployeePage      = lazy(() => import('@/pages/employee/EmployeePage'))
 const UserPage          = lazy(() => import('@/pages/user/UserPage'))
@@ -48,6 +49,7 @@ const AppRouter: React.FC = () => (
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard"        element={<DashboardPage />} />
+          <Route path="profile"          element={<ProfilePage />} />
           <Route path="departments"      element={<DepartmentPage />} />
           <Route path="employees"        element={<EmployeePage />} />
           <Route path="users"            element={<UserPage />} />

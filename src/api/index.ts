@@ -1,6 +1,7 @@
 import apiClient, { createCrudApi } from './client'
 import type {
   ApiResponse, AuthData, LoginRequest,
+  MyProfile,
   Department, DepartmentCreateRequest, DepartmentUpdateRequest,
   Employee, EmployeeCreateRequest, EmployeeUpdateRequest,
   User, UserCreateRequest, UserUpdateRequest,
@@ -22,6 +23,9 @@ export const authApi = {
   me: () =>
     apiClient.get<ApiResponse<AuthData>>('/auth/me').then((r) => r.data),
 
+  meProfile: () =>
+    apiClient.get<ApiResponse<MyProfile>>('/auth/me-profile').then((r) => r.data),
+
   logout: () =>
     apiClient.post<ApiResponse<void>>('/auth/logout').then((r) => r.data),
 }
@@ -36,5 +40,16 @@ export const permissionApi = createCrudApi<Permission,  PermissionCreateRequest,
 export const contractApi   = createCrudApi<Contract,    ContractCreateRequest,   ContractUpdateRequest>('contract')
 export const attendanceApi = createCrudApi<Attendance,  AttendanceCreateRequest, AttendanceUpdateRequest>('attendance')
 export const rewardApi     = createCrudApi<Reward,      RewardCreateRequest,     RewardUpdateRequest>('reward')
-export const salaryApi     = createCrudApi<Salary,      SalaryCreateRequest,     SalaryUpdateRequest>('salary')
+const salaryCrudApi        = createCrudApi<Salary,      SalaryCreateRequest,     SalaryUpdateRequest>('salary')
+export const salaryApi     = {
+  ...salaryCrudApi,
+  generateMonth: (month: number, year: number, overwriteDraft = false) =>
+    apiClient
+      .post<ApiResponse<number>>(`/salary/create/generate`, undefined, { params: { month, year, overwriteDraft } })
+      .then((r) => r.data),
+  finalizeMonth: (month: number, year: number) =>
+    apiClient
+      .put<ApiResponse<number>>(`/salary/update/finalize`, undefined, { params: { month, year } })
+      .then((r) => r.data),
+}
 export const tokenBlackListApi = createCrudApi<TokenBlackList>('token-black-list')

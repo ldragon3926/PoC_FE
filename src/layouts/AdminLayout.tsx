@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import { Layout, Menu, Avatar, Dropdown, Button, Typography, Space, theme } from 'antd'
 import {
   DashboardOutlined, TeamOutlined, UserOutlined, IdcardOutlined,
@@ -24,6 +24,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { key: '/dashboard',   icon: <DashboardOutlined />,    label: 'Tổng quan' },
+  { key: '/profile',     icon: <IdcardOutlined />,       label: 'Cá nhân' },
   { key: '/departments', icon: <BankOutlined />,          label: 'Phòng ban',     permission: PERMISSIONS.DEPARTMENT_LIST },
   { key: '/employees',   icon: <TeamOutlined />,          label: 'Nhân viên',     permission: PERMISSIONS.EMPLOYEE_LIST },
   { key: '/contracts',   icon: <FileTextOutlined />,      label: 'Hợp đồng',      permission: PERMISSIONS.CONTRACT_LIST },

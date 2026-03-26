@@ -17,6 +17,7 @@ const ContractPage      = lazy(() => import('@/pages/contract/ContractPage'))
 const AttendancePage    = lazy(() => import('@/pages/attendance/AttendancePage'))
 const RewardPage        = lazy(() => import('@/pages/reward/RewardPage'))
 const SalaryPage        = lazy(() => import('@/pages/salary/SalaryPage'))
+const SalaryKafkaPanelPage = lazy(() => import('@/pages/salary/SalaryKafkaPanelPage'))
 const TokenBlackListPage = lazy(() => import('@/pages/token-black-list/TokenBlackListPage'))
 
 const Loading = () => (
@@ -59,6 +60,7 @@ const AppRouter: React.FC = () => (
           <Route path="attendance"       element={<AttendancePage />} />
           <Route path="rewards"          element={<RewardPage />} />
           <Route path="salary"           element={<SalaryPage />} />
+          <Route path="salary-kafka"     element={<SalaryKafkaPanelPage />} />
           <Route path="token-black-list" element={<TokenBlackListPage />} />
         </Route>
 

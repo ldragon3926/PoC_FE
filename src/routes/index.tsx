@@ -17,6 +17,7 @@ const ContractPage     = lazy(() => import('@/pages/contract/ContractPage'))
 const AttendancePage   = lazy(() => import('@/pages/attendance/AttendancePage'))
 const RewardPage       = lazy(() => import('@/pages/reward/RewardPage'))
 const SalaryPage       = lazy(() => import('@/pages/salary/SalaryPage'))
+const SalaryKafkaPanelPage = lazy(() => import('@/pages/salary/SalaryKafkaPanelPage'))
 const TokenBlackListPage = lazy(() => import('@/pages/token/TokenBlackListPage'))
 
 const PageLoader = () => (
@@ -49,6 +50,7 @@ const AppRouter: React.FC = () => (
             <Route path="attendance"  element={<PermissionGuard permission={PERMISSIONS.ATTENDANCE_LIST}><AttendancePage /></PermissionGuard>} />
             <Route path="rewards"     element={<PermissionGuard permission={PERMISSIONS.REWARD_LIST}><RewardPage /></PermissionGuard>} />
             <Route path="salary"      element={<PermissionGuard permission={PERMISSIONS.SALARY_LIST}><SalaryPage /></PermissionGuard>} />
+            <Route path="salary-kafka" element={<PermissionGuard permission={PERMISSIONS.SALARY_CREATE}><SalaryKafkaPanelPage /></PermissionGuard>} />
             <Route path="token-black-list" element={<PermissionGuard permission={PERMISSIONS.TOKEN_LIST}><TokenBlackListPage /></PermissionGuard>} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

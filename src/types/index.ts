@@ -173,6 +173,30 @@ export interface Salary {
 export type SalaryCreateRequest = Omit<Salary, 'id' | 'employeeName' | 'createdAt'>
 export type SalaryUpdateRequest = SalaryCreateRequest
 
+export type SalaryJobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+
+export interface SalaryGenerateAsyncRequest {
+  month: number
+  year: number
+  overwriteDraft: boolean
+}
+
+export interface SalaryJob {
+  id: number
+  jobKey: string
+  month: number
+  year: number
+  overwriteDraft: boolean
+  status: SalaryJobStatus
+  attemptCount: number
+  affectedRows?: number
+  errorMessage?: string
+  createdAt?: string
+  startedAt?: string
+  completedAt?: string
+  updatedAt?: string
+}
+
 // ─── Token Black List ────────────────────────────────────────────────────────
 
 export interface TokenBlackList {

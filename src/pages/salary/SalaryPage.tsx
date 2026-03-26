@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Alert, App, Button, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import { useNavigate } from 'react-router-dom'
 import { contractApi, employeeApi, rewardApi, salaryApi } from '@/api'
 import ConfirmDelete from '@/components/common/ConfirmDelete'
 import PageHeader from '@/components/common/PageHeader'
@@ -85,6 +86,7 @@ type SalaryListFilters = {
 const SalaryPage: React.FC = () => {
   const { modal, message } = App.useApp()
   const { hasPermission } = useAuth()
+  const navigate = useNavigate()
   const [appliedFilters, setAppliedFilters] = useState<SalaryListFilters>({})
   const salaryFetcher = React.useCallback(() => salaryApi.listAll(appliedFilters), [appliedFilters])
   const { data, loading, error, fetch } = useList(salaryFetcher)
@@ -173,6 +175,22 @@ const SalaryPage: React.FC = () => {
       onSuccess: (result: ApiResponse<number>) => {
         message.success(result.message || 'Generate salary period successfully')
         fetch()
+      },
+    }
+  )
+
+  const generateAsyncMut = useMutation(
+    (args: { month: number; year: number; overwriteDraft: boolean }) =>
+      salaryApi.generateMonthAsync({
+        month: args.month,
+        year: args.year,
+        overwriteDraft: args.overwriteDraft,
+      }),
+    {
+      onSuccess: (result) => {
+        const createdJob = result.data
+        message.success(result.message || `Submit salary Kafka job successfully (Job ID: ${createdJob.id})`)
+        navigate('/salary-kafka')
       },
     }
   )
@@ -321,6 +339,27 @@ const SalaryPage: React.FC = () => {
     })
   }
 
+  const triggerGenerateAsync = () => {
+    if (finalizeMonth < 1 || finalizeMonth > 12) {
+      message.error('Month must be between 1 and 12')
+      return
+    }
+    if (finalizeYear < 2000 || finalizeYear > 3000) {
+      message.error('Year must be between 2000 and 3000')
+      return
+    }
+
+    modal.confirm({
+      title: `Generate salary period ${finalizeMonth}/${finalizeYear} via Kafka?`,
+      content: 'This will submit an asynchronous salary generation job to Kafka. You can track progress on Salary Kafka Panel.',
+      okText: 'Submit Kafka Job',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        await generateAsyncMut.execute({ month: finalizeMonth, year: finalizeYear, overwriteDraft: false })
+      },
+    })
+  }
+
   const applyFilters = () => {
     setAppliedFilters({
       keyword: keyword.trim() || undefined,
@@ -428,6 +467,9 @@ const SalaryPage: React.FC = () => {
                   />
                   <Button icon={<ThunderboltOutlined />} onClick={triggerGenerate} loading={generateMut.loading}>
                     Generate
+                  </Button>
+                  <Button onClick={triggerGenerateAsync} loading={generateAsyncMut.loading}>
+                    Generate via Kafka
                   </Button>
                   <Button onClick={triggerFinalize} loading={finalizeMut.loading}>
                     Finalize period

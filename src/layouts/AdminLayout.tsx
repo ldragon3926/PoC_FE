@@ -4,7 +4,7 @@ import {
   DashboardOutlined, TeamOutlined, UserOutlined, IdcardOutlined,
   SafetyOutlined, KeyOutlined, FileTextOutlined, ClockCircleOutlined,
   TrophyOutlined, DollarOutlined, LogoutOutlined, MenuFoldOutlined,
-  MenuUnfoldOutlined, LockOutlined, BankOutlined,
+  MenuUnfoldOutlined, LockOutlined, BankOutlined, ClusterOutlined,
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -31,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: '/attendance',  icon: <ClockCircleOutlined />,   label: 'Chấm công',     permission: PERMISSIONS.ATTENDANCE_LIST },
   { key: '/rewards',     icon: <TrophyOutlined />,        label: 'Khen thưởng',   permission: PERMISSIONS.REWARD_LIST },
   { key: '/salary',      icon: <DollarOutlined />,        label: 'Lương',         permission: PERMISSIONS.SALARY_LIST },
+  { key: '/salary-kafka', icon: <ClusterOutlined />,      label: 'Salary Kafka',  permission: PERMISSIONS.SALARY_CREATE },
   { key: '/users',       icon: <UserOutlined />,          label: 'Tài khoản',     permission: PERMISSIONS.USER_LIST },
   { key: '/roles',       icon: <SafetyOutlined />,        label: 'Vai trò',       permission: PERMISSIONS.ROLE_LIST },
   { key: '/permissions', icon: <KeyOutlined />,           label: 'Quyền hạn',     permission: PERMISSIONS.PERMISSION_LIST },

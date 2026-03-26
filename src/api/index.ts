@@ -10,7 +10,7 @@ import type {
   Contract, ContractCreateRequest, ContractUpdateRequest,
   Attendance, AttendanceCreateRequest, AttendanceUpdateRequest,
   Reward, RewardCreateRequest, RewardUpdateRequest,
-  Salary, SalaryCreateRequest, SalaryUpdateRequest,
+  Salary, SalaryCreateRequest, SalaryGenerateAsyncRequest, SalaryJob, SalaryUpdateRequest,
   TokenBlackList,
 } from '@/types'
 
@@ -56,6 +56,14 @@ export const salaryApi     = {
   generateMonth: (month: number, year: number, overwriteDraft = false) =>
     apiClient
       .post<ApiResponse<number>>(`/salary/create/generate`, undefined, { params: { month, year, overwriteDraft } })
+      .then((r) => r.data),
+  generateMonthAsync: (payload: SalaryGenerateAsyncRequest) =>
+    apiClient
+      .post<ApiResponse<SalaryJob>>('/salary/create/generate/async', payload)
+      .then((r) => r.data),
+  getJob: (id: number) =>
+    apiClient
+      .get<ApiResponse<SalaryJob>>(`/salary/jobs/${id}`)
       .then((r) => r.data),
   finalizeMonth: (month: number, year: number) =>
     apiClient

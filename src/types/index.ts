@@ -197,6 +197,39 @@ export interface SalaryJob {
   updatedAt?: string
 }
 
+export type ConnectorState =
+  | 'RUNNING'
+  | 'FAILED'
+  | 'UNASSIGNED'
+  | 'PAUSED'
+  | 'RESTARTING'
+  | 'UNREACHABLE'
+  | 'UNKNOWN'
+
+export interface IntegrationConnectorTask {
+  id: number
+  state: ConnectorState | string
+  workerId: string
+  trace?: string
+}
+
+export interface IntegrationConnectorStatus {
+  name: string
+  type: string
+  state: ConnectorState | string
+  workerId: string
+  tasks: IntegrationConnectorTask[]
+  error?: string
+}
+
+export interface IntegrationOverview {
+  kafkaConnectUrl: string
+  schemaRegistryUrl: string
+  kafkaConnectReachable: boolean
+  schemaRegistryReachable: boolean
+  connectors: IntegrationConnectorStatus[]
+}
+
 // ─── Token Black List ────────────────────────────────────────────────────────
 
 export interface TokenBlackList {

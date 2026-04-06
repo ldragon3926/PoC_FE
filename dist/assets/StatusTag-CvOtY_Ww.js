@@ -1,0 +1,1 @@
+import{j as s}from"./index-CznC07Sx.js";import{s as a,a as r}from"./format-DIx7hkX-.js";import{T as t}from"./index-h3gPBcUV.js";const e=({status:o})=>s.jsx(t,{color:r(o),children:a(o)});export{e as S};

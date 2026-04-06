@@ -11,6 +11,7 @@ import type {
   Attendance, AttendanceCreateRequest, AttendanceUpdateRequest,
   Reward, RewardCreateRequest, RewardUpdateRequest,
   Salary, SalaryCreateRequest, SalaryGenerateAsyncRequest, SalaryJob, SalaryUpdateRequest,
+  IntegrationOverview, IntegrationConnectorStatus,
   TokenBlackList,
 } from '@/types'
 
@@ -71,3 +72,11 @@ export const salaryApi     = {
       .then((r) => r.data),
 }
 export const tokenBlackListApi = createCrudApi<TokenBlackList>('token-black-list')
+
+export const integrationApi = {
+  getOverview: () =>
+    apiClient.get<ApiResponse<IntegrationOverview>>('/integration/status').then((r) => r.data),
+
+  getConnectorStatus: (name: string) =>
+    apiClient.get<ApiResponse<IntegrationConnectorStatus>>(`/integration/connector/${name}`).then((r) => r.data),
+}

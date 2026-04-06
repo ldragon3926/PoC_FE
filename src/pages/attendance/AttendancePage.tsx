@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   App,
   Alert,
@@ -34,6 +34,13 @@ const calculateWorkingHours = (checkIn?: dayjs.Dayjs, checkOut?: dayjs.Dayjs) =>
   return Number((diffMinutes / 60).toFixed(2))
 }
 
+type AttendanceFilters = {
+  keyword?: string
+  employeeId?: number
+  startDate?: string
+  endDate?: string
+}
+
 const AttendancePage: React.FC = () => {
   const { message } = App.useApp()
   const { user, hasPermission } = useAuth()
@@ -42,6 +49,10 @@ const AttendancePage: React.FC = () => {
   const [selfEmployee, setSelfEmployee] = useState<{ id: number; name: string } | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Attendance | null>(null)
+  const [keyword, setKeyword] = useState('')
+  const [filterEmployeeId, setFilterEmployeeId] = useState<number | undefined>(undefined)
+  const [filterWorkDateRange, setFilterWorkDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<AttendanceFilters>({})
   const [form] = Form.useForm()
   const canListEmployees = hasPermission(PERMISSIONS.EMPLOYEE_LIST)
 
@@ -165,6 +176,54 @@ const AttendancePage: React.FC = () => {
   const canUpdate = hasPermission(PERMISSIONS.ATTENDANCE_UPDATE)
   const canDelete = hasPermission(PERMISSIONS.ATTENDANCE_DELETE)
 
+  const applyFilters = () => {
+    const [start, end] = filterWorkDateRange ?? []
+    setAppliedFilters({
+      keyword: keyword.trim() || undefined,
+      employeeId: canListEmployees ? filterEmployeeId : undefined,
+      startDate: start?.format('YYYY-MM-DD'),
+      endDate: end?.format('YYYY-MM-DD'),
+    })
+  }
+
+  const resetFilters = () => {
+    setKeyword('')
+    setFilterEmployeeId(undefined)
+    setFilterWorkDateRange(null)
+    setAppliedFilters({})
+  }
+
+  const filteredData = useMemo(() => {
+    return data.filter((record: Attendance) => {
+      if (appliedFilters.employeeId && record.employeeId !== appliedFilters.employeeId) {
+        return false
+      }
+
+      if (appliedFilters.keyword) {
+        const normalizedKeyword = appliedFilters.keyword.toLowerCase()
+        const employeeName = String(
+          getEmployeeDisplayName(record as unknown as Record<string, unknown>, empMap)
+        ).toLowerCase()
+        if (!employeeName.includes(normalizedKeyword)) {
+          return false
+        }
+      }
+
+      if (appliedFilters.startDate || appliedFilters.endDate) {
+        const workDate = dayjs(record.workDate)
+        if (!workDate.isValid()) return false
+        if (appliedFilters.startDate && workDate.isBefore(dayjs(appliedFilters.startDate), 'day')) {
+          return false
+        }
+        if (appliedFilters.endDate && workDate.isAfter(dayjs(appliedFilters.endDate), 'day')) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [data, appliedFilters, empMap])
+
   const columns = [
     { title: 'ID', dataIndex: 'id', width: 70 },
     {
@@ -198,7 +257,7 @@ const AttendancePage: React.FC = () => {
     <>
       <PageHeader
         title="Attendance"
-        subtitle={`${data.length} records`}
+        subtitle={`${filteredData.length}/${data.length} records`}
         extra={
           canCreate
             ? [
@@ -210,10 +269,45 @@ const AttendancePage: React.FC = () => {
         }
       />
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+      <Space wrap style={{ marginBottom: 16 }}>
+        <Input
+          placeholder="Search employee name"
+          value={keyword}
+          onChange={event => setKeyword(event.target.value)}
+          allowClear
+          style={{ width: 240 }}
+          onPressEnter={applyFilters}
+        />
+        {canListEmployees && (
+          <Select
+            placeholder="Employee"
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            value={filterEmployeeId}
+            onChange={value => setFilterEmployeeId(value)}
+            style={{ width: 220 }}
+            options={employeeList.data.map(employee => ({
+              value: employee.id,
+              label: employee.name,
+            }))}
+          />
+        )}
+        <DatePicker.RangePicker
+          value={filterWorkDateRange}
+          onChange={value => setFilterWorkDateRange(value)}
+          format="DD/MM/YYYY"
+          allowClear
+        />
+        <Button type="primary" onClick={applyFilters}>
+          Search
+        </Button>
+        <Button onClick={resetFilters}>Reset</Button>
+      </Space>
       <Table
         rowKey="id"
         columns={columns}
-        dataSource={data}
+        dataSource={filteredData}
         loading={loading}
         locale={{ emptyText: <Empty description="No attendance data" /> }}
         pagination={{ pageSize: 15, showSizeChanger: true, showTotal: total => `Total ${total} records` }}
